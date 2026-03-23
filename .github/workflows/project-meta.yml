@@ -1,6 +1,7 @@
 name: Update Project Metadata
 
 on:
+  workflow_dispatch:   # 👉 lisab "Run workflow" nupu
   issues:
     types: [opened, edited, reopened, closed]
   pull_request:
@@ -27,16 +28,18 @@ jobs:
             const fieldCreatedDate = "PVTF_lAHOBnWLgs4BSWamzg_6VC4";
             const fieldLastModifiedBy = "PVTF_lAHOBnWLgs4BSWamzg_6VGA";
 
-            // ⚠️ Sul ei ole Last updated field ID-d — kui lisad, pane siia
-            const fieldUpdated = null;
-
             const isIssue = !!context.payload.issue;
             const item = isIssue ? context.payload.issue : context.payload.pull_request;
+
+            // Kui käivitad käsitsi (workflow_dispatch), siis pole payload.issue olemas
+            if (!item) {
+              console.log("Manual run – no issue context");
+              return;
+            }
 
             const contentNodeId = item.node_id;
             const createdBy = item.user.login;
             const createdAt = item.created_at;
-            const updatedAt = new Date().toISOString();
             const lastModifiedBy = context.payload.sender.login;
 
             // 🔍 Leia project item ID

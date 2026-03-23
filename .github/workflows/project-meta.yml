@@ -1,7 +1,7 @@
 name: Update Project Metadata
 
 on:
-  workflow_dispatch:   # 👉 lisab "Run workflow" nupu
+  workflow_dispatch:   # Lisab Run workflow nupu
   issues:
     types: [opened, edited, reopened, closed]
   pull_request:
@@ -17,23 +17,29 @@ jobs:
   update-project-fields:
     runs-on: ubuntu-latest
 
+    env:
+      # ⚠️ Kasuta siin oma PAT tokenit, mitte vaikimisi GITHUB_TOKEN
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - name: Update project fields
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.PAT_TOKEN }}
           script: |
+            // 🔹 Sisesta oma PROJECT_ID ja FIELD_ID-d
             const projectId = "PVT_kwHOBnWLgs4BSWam";
-
             const fieldCreatedBy = "PVTF_lAHOBnWLgs4BSWamzg_6U3A";
             const fieldCreatedDate = "PVTF_lAHOBnWLgs4BSWamzg_6VC4";
             const fieldLastModifiedBy = "PVTF_lAHOBnWLgs4BSWamzg_6VGA";
 
+            // Node_id issue või PR-st
             const isIssue = !!context.payload.issue;
             const item = isIssue ? context.payload.issue : context.payload.pull_request;
 
-            // Kui käivitad käsitsi (workflow_dispatch), siis pole payload.issue olemas
+            // 🔹 Kui käsitsi run, siis ei ole payload.issue
             if (!item) {
-              console.log("Manual run – no issue context");
+              console.log("Manual run – ei ole issue või PR contexti");
               return;
             }
 
@@ -41,8 +47,15 @@ jobs:
             const createdBy = item.user.login;
             const createdAt = item.created_at;
             const lastModifiedBy = context.payload.sender.login;
+            const updatedAt = new Date().toISOString();
 
-            // 🔍 Leia project item ID
+            console.log("DEBUG: contentNodeId =", contentNodeId);
+            console.log("DEBUG: createdBy =", createdBy);
+            console.log("DEBUG: createdAt =", createdAt);
+            console.log("DEBUG: lastModifiedBy =", lastModifiedBy);
+            console.log("DEBUG: updatedAt =", updatedAt);
+
+            // 🔹 Küsime projekti items
             const itemsQuery = await github.graphql(`
               query {
                 node(id: "${projectId}") {
@@ -62,16 +75,21 @@ jobs:
             `);
 
             const items = itemsQuery.node.items.nodes;
+            console.log("DEBUG: kõik items projektis =", items.map(i => i.content?.id));
+
+            // 🔹 Otsime õige project item
             const projectItem = items.find(i => i.content?.id === contentNodeId);
+            console.log("DEBUG: leitud projectItem =", projectItem);
 
             if (!projectItem) {
-              console.log("Item not in project");
+              console.log("Item ei ole projektis – workflow ei täida välju");
               return;
             }
 
             const itemId = projectItem.id;
+            console.log("DEBUG: projectItem ID =", itemId);
 
-            // 🔹 Last modified by
+            // 🔹 Last modified by (uuendatakse iga kord)
             await github.graphql(`
               mutation {
                 updateProjectV2ItemFieldValue(input: {
@@ -85,9 +103,8 @@ jobs:
               }
             `);
 
-            // 🔹 ainult loomisel
+            // 🔹 Created by ja Created date – ainult loomisel (opened)
             if (context.payload.action === "opened") {
-
               // Created by
               await github.graphql(`
                 mutation {
@@ -116,3 +133,5 @@ jobs:
                 }
               `);
             }
+
+            console.log("DEBUG: workflow lõpetatud edukalt");

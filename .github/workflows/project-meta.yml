@@ -21,6 +21,35 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      - name: DEBUG — List all project fields
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const projectId = "PVT_kwHOBnWLgs4BSWam";
+
+            const fields = await github.graphql(`
+              query {
+                node(id: "${projectId}") {
+                  ... on ProjectV2 {
+                    fields(first: 50) {
+                      nodes {
+                        id
+                        name
+                        dataType
+                      }
+                    }
+                  }
+                }
+              }
+            `);
+
+            console.log("PROJECT FIELD LIST:");
+            for (const f of fields.node.fields.nodes) {
+              console.log(`${f.name} | ${f.dataType} | ${f.id}`);
+            }
+
+    
       - name: Update project fields
         uses: actions/github-script@v8
         with:

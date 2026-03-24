@@ -107,6 +107,9 @@ jobs:
                 const createdAt = node.content.createdAt;
                 const itemId = node.id;
 
+                // NEW FIX 👉 generate updatedAt for each item
+                const updatedAt = new Date().toISOString();
+
                 console.log("Updating item:", node.content.number);
 
                 // Created By
@@ -137,8 +140,7 @@ jobs:
                   }
                 `);
 
-
-                // 🔹 Last updated (uuendatakse iga kord)
+                // ✔️ FIXED — Last Updated
                 await github.graphql(`
                   mutation {
                     updateProjectV2ItemFieldValue(input: {
@@ -152,7 +154,7 @@ jobs:
                   }
                 `);
 
-                // Last Modified (same as createdBy for batch refresh)
+                // Last Modified (set to same for refresh)
                 await github.graphql(`
                   mutation {
                     updateProjectV2ItemFieldValue(input: {

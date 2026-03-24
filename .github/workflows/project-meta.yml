@@ -33,6 +33,7 @@ jobs:
             const fieldCreatedBy = "PVTF_lAHOBnWLgs4BSWamzg_6U3A";
             const fieldCreatedDate = "PVTF_lAHOBnWLgs4BSWamzg_6VC4";
             const fieldLastModifiedBy = "PVTF_lAHOBnWLgs4BSWamzg_6VGA";
+            const fieldLastUpdated = "PVTF_lAHOBnWLgs4BSWamzg_6U4U";
 
             // -------------------------------
             // PAGINATION FUNCTION
@@ -130,6 +131,21 @@ jobs:
                       itemId: "${itemId}",
                       fieldId: "${fieldCreatedDate}",
                       value: { date: "${createdAt}" }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `);
+
+
+                // 🔹 Last updated (uuendatakse iga kord)
+                await github.graphql(`
+                  mutation {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: "${projectId}",
+                      itemId: "${itemId}",
+                      fieldId: "${fieldLastUpdated}",
+                      value: { date: "${updatedAt}" }
                     }) {
                       projectV2Item { id }
                     }

@@ -39,7 +39,88 @@ jobs:
 
             // 🔹 Kui käsitsi run, siis ei ole payload.issue
             if (!item) {
-              console.log("Manual run – ei ole issue või PR contexti");
+              console.log("Manual run detected – refreshing ALL project items…");
+
+              // 1. Fetch all project items (increase limit from 100 → 500)
+              const itemsQuery = await github.graphql(`
+                query {
+                  node(id: "${projectId}") {
+                    ... on ProjectV2 {
+                      items(first: 500) {
+                        nodes {
+                          id
+                          content {
+                            ... on Issue {
+                              id
+                              number
+                              createdAt
+                              author { login }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `);
+
+              const nodes = itemsQuery.node.items.nodes;
+
+              for (const node of nodes) {
+                if (!node.content) continue;
+
+                const issueNumber = node.content.number;
+                const createdBy = node.content.author.login;
+                const createdAt = node.content.createdAt;
+                const itemId = node.id;
+
+                console.log("Updating item:", issueNumber);
+
+                // update Created By
+                await github.graphql(`
+                  mutation {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: "${projectId}",
+                      itemId: "${itemId}",
+                      fieldId: "${fieldCreatedBy}",
+                      value: { text: "${createdBy}" }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `);
+
+                // update Created Date
+                await github.graphql(`
+                  mutation {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: "${projectId}",
+                      itemId: "${itemId}",
+                      fieldId: "${fieldCreatedDate}",
+                      value: { date: "${createdAt}" }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `);
+
+                // update Last Modified By (set to same for refresh)
+                await github.graphql(`
+                  mutation {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: "${projectId}",
+                      itemId: "${itemId}",
+                      fieldId: "${fieldLastModifiedBy}",
+                      value: { text: "${createdBy}" }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `);
+
+              }
+
+              console.log("Full refresh complete!");
               return;
             }
 

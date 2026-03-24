@@ -1,7 +1,7 @@
 name: Update Project Metadata
 
 on:
-  workflow_dispatch:   # Manual run button
+  workflow_dispatch:
   issues:
     types: [opened, edited, reopened, closed]
   pull_request:
@@ -21,6 +21,9 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      # -------------------------
+      # DEBUG — List all project fields
+      # -------------------------
       - name: DEBUG — List all project fields
         uses: actions/github-script@v8
         with:
@@ -65,7 +68,9 @@ jobs:
               console.log(`${f.name} | ${f.dataType} | ${f.id}`);
             }
 
-    
+      # -------------------------
+      # MAIN UPDATE STEP
+      # -------------------------
       - name: Update project fields
         uses: actions/github-script@v8
         with:
@@ -78,7 +83,7 @@ jobs:
             const fieldCreatedBy = "PVTF_lAHOBnWLgs4BSWamzg_6U3A";
             const fieldCreatedDate = "PVTF_lAHOBnWLgs4BSWamzg_6VC4";
             const fieldLastModifiedBy = "PVTF_lAHOBnWLgs4BSWamzg_6VGA";
-            const fieldLastUpdated = "PVTF_lAHOBnWLgs4BSWamzg_6U4U";
+            const fieldLastUpdated = "PVTF_lAHOBnWLgs4BSWamzg_6U4U"; // your correct ID
 
             // -------------------------------
             // PAGINATION FUNCTION
@@ -137,7 +142,7 @@ jobs:
             const item = isIssue ? context.payload.issue : context.payload.pull_request;
 
             // -------------------------------
-            // MANUAL RUN MODE → REFRESH ALL ITEMS
+            // MANUAL RUN → REFRESH ALL ITEMS
             // -------------------------------
             if (!item) {
               console.log("Manual run detected — refreshing ALL project items…");
@@ -151,8 +156,6 @@ jobs:
                 const createdBy = node.content.author?.login ?? "unknown";
                 const createdAt = node.content.createdAt;
                 const itemId = node.id;
-
-                // NEW FIX 👉 generate updatedAt for each item
                 const updatedAt = new Date().toISOString();
 
                 console.log("Updating item:", node.content.number);
@@ -185,7 +188,7 @@ jobs:
                   }
                 `);
 
-                // ✔️ FIXED — Last Updated
+                // Last Updated
                 await github.graphql(`
                   mutation {
                     updateProjectV2ItemFieldValue(input: {
@@ -199,7 +202,7 @@ jobs:
                   }
                 `);
 
-                // Last Modified (set to same for refresh)
+                // Last Modified
                 await github.graphql(`
                   mutation {
                     updateProjectV2ItemFieldValue(input: {
@@ -219,16 +222,15 @@ jobs:
             }
 
             // -------------------------------
-            // NORMAL EVENT-BASED UPDATE
+            // EVENT-BASED UPDATE
             // -------------------------------
             const contentNodeId = item.node_id;
             const createdBy = item.user.login;
             const createdAt = item.created_at;
             const lastModifiedBy = context.payload.sender.login;
+            const updatedAt = new Date().toISOString();
 
-            // Fetch project items (paginated)
             const allItems = await getAllProjectItems();
-
             const projectItem = allItems.find(i => i.content?.id === contentNodeId);
 
             if (!projectItem) {
@@ -238,7 +240,7 @@ jobs:
 
             const itemId = projectItem.id;
 
-            // Last Modified (always updated)
+            // Last Modified
             await github.graphql(`
               mutation {
                 updateProjectV2ItemFieldValue(input: {
@@ -252,8 +254,22 @@ jobs:
               }
             `);
 
-            // Created fields only when opened
+            // Last Updated
+            await github.graphql(`
+              mutation {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: "${projectId}",
+                  itemId: "${itemId}",
+                  fieldId: "${fieldLastUpdated}",
+                  value: { date: "${updatedAt}" }
+                }) {
+                  projectV2Item { id }
+                }
+              }
+            `);
+
             if (context.payload.action === "opened") {
+              // Created By
               await github.graphql(`
                 mutation {
                   updateProjectV2ItemFieldValue(input: {
@@ -267,6 +283,7 @@ jobs:
                 }
               `);
 
+              // Created Date
               await github.graphql(`
                 mutation {
                   updateProjectV2ItemFieldValue(input: {

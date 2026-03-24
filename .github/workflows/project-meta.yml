@@ -34,9 +34,25 @@ jobs:
                   ... on ProjectV2 {
                     fields(first: 50) {
                       nodes {
-                        id
-                        name
-                        dataType
+                        ... on ProjectV2FieldCommon {
+                          id
+                          name
+                          dataType
+                        }
+                        ... on ProjectV2IterationField {
+                          id
+                          name
+                          dataType
+                        }
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          dataType
+                          options {
+                            id
+                            name
+                          }
+                        }
                       }
                     }
                   }
@@ -44,7 +60,7 @@ jobs:
               }
             `);
 
-            console.log("PROJECT FIELD LIST:");
+            console.log("PROJECT FIELDS:");
             for (const f of fields.node.fields.nodes) {
               console.log(`${f.name} | ${f.dataType} | ${f.id}`);
             }
